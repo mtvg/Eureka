@@ -421,6 +421,9 @@ open class FormViewController: UIViewController, FormViewControllerProtocol, For
 
     /// Enables animated scrolling on row navigation
     open var animateScroll = false
+	
+    /// Disable UITableView.endEditing(), fix for Catalyst
+    open var disableViewEndEditing = false
 
     /// Accessory view that is responsible for the navigation between rows
     private var navigationAccessoryView: (UIView & NavigationAccessory)!
@@ -673,7 +676,9 @@ open class FormViewController: UIViewController, FormViewControllerProtocol, For
                 return true
             }
         }
-        tableView?.endEditing(true)
+	if !disableViewEndEditing {
+	    tableView?.endEditing(true)
+	}
         return true
     }
 
@@ -785,7 +790,7 @@ extension FormViewController : UITableViewDelegate {
         guard tableView == self.tableView else { return }
         let row = form[indexPath]
         // row.baseCell.cellBecomeFirstResponder() may be cause InlineRow collapsed then section count will be changed. Use orignal indexPath will out of  section's bounds.
-        if !row.baseCell.cellCanBecomeFirstResponder() || !row.baseCell.cellBecomeFirstResponder() {
+        if !disableViewEndEditing, !row.baseCell.cellCanBecomeFirstResponder() || !row.baseCell.cellBecomeFirstResponder() {
             self.tableView?.endEditing(true)
         }
         row.didSelect()
@@ -842,7 +847,7 @@ extension FormViewController : UITableViewDelegate {
         if editingStyle == .delete {
             let row = form[indexPath]
             let section = row.section!
-            if let _ = row.baseCell.findFirstResponder() {
+            if !disableViewEndEditing, let _ = row.baseCell.findFirstResponder() {
                 tableView.endEditing(true)
             }
             section.remove(at: indexPath.row)
@@ -1001,7 +1006,7 @@ extension FormViewController : UIScrollViewDelegate {
     // MARK: UIScrollViewDelegate
 
     open func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-        guard let tableView = tableView, scrollView === tableView else { return }
+        guard disableViewEndEditing, let tableView = tableView, scrollView === tableView else { return }
         tableView.endEditing(true)
     }
 }
@@ -1073,7 +1078,9 @@ extension FormViewController {
     // MARK: Navigation Methods
 
     @objc func navigationDone() {
-        tableView?.endEditing(true)
+	if !disableViewEndEditing {
+            tableView?.endEditing(true)
+	}
     }
 
     @objc func navigationPrevious() {
